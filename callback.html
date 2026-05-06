@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok OAuth Callback — BOM Shorts</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    max-width: 640px;
+    margin: 50px auto;
+    padding: 24px;
+    background: #fafafa;
+    color: #222;
+    line-height: 1.6;
+  }
+  h1 { color: #ff0050; margin-bottom: 8px; }
+  .sub { color: #888; font-size: 14px; margin-bottom: 24px; }
+  .box {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin: 20px 0;
+  }
+  .code-box {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 13px;
+    word-break: break-all;
+    border-left: 4px solid #ff0050;
+  }
+  button {
+    background: #ff0050;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 16px;
+  }
+  button:hover { background: #d6004a; }
+  button:disabled { background: #4caf50; cursor: default; }
+  .success { color: #4caf50; }
+  .error { color: #f44336; }
+  .warning { color: #ff9800; }
+  .meta { font-size: 12px; color: #888; margin-top: 16px; }
+  hr { border: none; border-top: 1px solid #eee; margin: 40px 0 20px; }
+  footer { text-align: center; color: #aaa; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>BOM Shorts</h1>
+<div class="sub">TikTok OAuth Callback · 봄디자인 자동 발행 시스템</div>
+
+<div class="box" id="result">로딩 중...</div>
+
+<hr>
+<footer>봄디자인 · onsale_designbom · TikTok @인스타2568</footer>
+
+<script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const scopes = params.get('scopes');
+  const error = params.get('error');
+  const errorDescription = params.get('error_description');
+  const result = document.getElementById('result');
+
+  if (error) {
+    result.innerHTML = `
+      <h2 class="error">❌ OAuth 오류</h2>
+      <p><strong>오류 코드:</strong> ${escapeHtml(error)}</p>
+      <p><strong>설명:</strong> ${escapeHtml(errorDescription || '없음')}</p>
+      <p class="meta">TikTok 개발자 콘솔에서 앱 설정을 확인하세요.</p>
+    `;
+  } else if (code) {
+    result.innerHTML = `
+      <h2 class="success">✅ 인증 성공</h2>
+      <p>아래 <strong>authorization code</strong>를 복사해서 토큰 교환 스크립트에 입력하세요.</p>
+      <p class="warning">⚠ 이 code는 <strong>10분 내</strong>에 사용해야 합니다.</p>
+      <div class="code-box" id="code-box">${escapeHtml(code)}</div>
+      <button id="copy-btn" onclick="copyCode()">📋 Code 복사</button>
+      ${scopes ? `<p class="meta"><strong>승인된 scope:</strong> ${escapeHtml(scopes)}</p>` : ''}
+      ${state ? `<p class="meta"><strong>state:</strong> <code>${escapeHtml(state)}</code></p>` : ''}
+    `;
+  } else {
+    result.innerHTML = `
+      <h2 class="warning">⚠ Code 없음</h2>
+      <p>이 페이지는 TikTok OAuth 인증 후 자동으로 redirect되는 콜백 페이지입니다.</p>
+      <p>직접 방문하셨다면 정상 흐름이 아닙니다.</p>
+      <p class="meta">정상 흐름: TikTok 로그인 → 권한 승인 → 이 페이지로 자동 redirect (URL에 ?code=... 포함)</p>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  window.copyCode = function() {
+    const codeText = document.getElementById('code-box').textContent;
+    navigator.clipboard.writeText(codeText).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ 복사 완료';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = '📋 Code 복사'; btn.disabled = false; }, 2500);
+    });
+  };
+})();
+</script>
+</body>
+</html>
