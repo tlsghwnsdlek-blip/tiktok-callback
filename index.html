@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BomDesign Publisher</title>
+<style>
+  :root{--ink:#1f2230;--muted:#5b6072;--line:#e7e8ee;--brand:#c4345e;--brand2:#221c40}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;color:var(--ink);line-height:1.7;background:#fafbfc}
+  .hero{background:linear-gradient(135deg,var(--brand2),var(--brand));color:#fff;padding:64px 24px 56px;text-align:center}
+  .hero h1{font-size:34px;margin:0 0 10px;letter-spacing:-.5px}
+  .hero p{font-size:16px;opacity:.92;max-width:620px;margin:0 auto}
+  .badge{display:inline-block;margin-bottom:18px;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.8}
+  .wrap{max-width:820px;margin:0 auto;padding:44px 24px 70px}
+  h2{font-size:20px;margin:32px 0 10px}
+  p,li{font-size:15px;color:#2b2f3d}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px;background:#fff}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--brand)}
+  .card p{margin:0;font-size:14px;color:var(--muted)}
+  .ko{color:var(--muted);font-size:13.5px}
+  footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;text-align:center}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="hero">
+    <div class="badge">Onsale · BomDesign</div>
+    <h1>BomDesign Publisher</h1>
+    <p>An internal multi-channel publishing tool that posts our own video content to the social accounts we own — TikTok, YouTube, Instagram, Facebook, and Threads — from one place.</p>
+  </div>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p>BomDesign Publisher takes a video we produced and publishes it to our owned social media accounts in a single workflow. For TikTok, it uses the Content Posting API to upload and directly post the video to <strong>our own account</strong>, with our caption and chosen privacy setting.</p>
+    <p class="ko">BomDesign Publisher는 자사가 제작한 영상을 자사 소유 SNS 계정에 한 번에 발행하는 내부 도구입니다. TikTok의 경우 Content Posting API로 자사 계정에 영상을 업로드·직접 게시합니다.</p>
+
+    <div class="grid">
+      <div class="card"><h3>First-party only</h3><p>Posts only our own content to accounts we own. No third-party or user-generated content.</p></div>
+      <div class="card"><h3>One workflow</h3><p>Publishes to TikTok, YouTube, Instagram, Facebook, and Threads together.</p></div>
+      <div class="card"><h3>Direct Post</h3><p>Uploads and direct-posts to our TikTok account using <code>video.upload</code> and <code>video.publish</code>.</p></div>
+      <div class="card"><h3>Internal use</h3><p>Operated only by our authorized staff — not offered to the public.</p></div>
+    </div>
+
+    <h2>TikTok integration</h2>
+    <p>Scopes used: <code>user.info.basic</code>, <code>video.upload</code>, <code>video.publish</code>. The tool authenticates our own TikTok account and posts our marketing videos to it. It does not access other users' data.</p>
+
+    <h2>Legal</h2>
+    <p>
+      <a href="./privacy.html">Privacy Policy</a> &nbsp;·&nbsp;
+      <a href="./terms.html">Terms of Service</a>
+    </p>
+
+    <h2>Contact</h2>
+    <p>Onsale / BomDesign · Representative: Shin Ho-jun (신호준) · <a href="mailto:tlsghwnsdlek@gmail.com">tlsghwnsdlek@gmail.com</a></p>
+
+    <footer>© 2026 Onsale / BomDesign. All rights reserved.</footer>
+  </div>
+</body>
+</html>
