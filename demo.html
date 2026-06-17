@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BomDesign Publisher — Post to TikTok</title>
+<style>
+  :root { --tt:#ff0050; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    max-width: 600px; margin: 32px auto; padding: 24px; background:#fafafa; color:#1c1c1c; line-height:1.55; }
+  h1 { color: var(--tt); margin:0 0 4px; font-size: 22px; }
+  .sub { color:#888; font-size:13px; margin-bottom:20px; }
+  .card { background:#fff; padding:22px; border-radius:12px; box-shadow:0 2px 14px rgba(0,0,0,.07); margin:16px 0; }
+  button { background:var(--tt); color:#fff; border:none; padding:12px 22px; border-radius:8px; cursor:pointer;
+    font-size:15px; font-weight:700; }
+  button:hover { background:#d6004a; }
+  button:disabled { background:#c7c7c7; cursor:not-allowed; }
+  label { display:block; font-weight:600; margin:14px 0 6px; font-size:14px; }
+  input[type=text], textarea, select { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; }
+  textarea { resize:vertical; min-height:64px; }
+  .row { display:flex; align-items:center; gap:8px; margin:8px 0; font-weight:400; }
+  .row label { display:inline; font-weight:400; margin:0; }
+  .opt { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid #e3e3e3; border-radius:8px; margin:6px 0; cursor:pointer; }
+  .opt.sel { border-color:var(--tt); background:#fff0f4; }
+  .creator { display:flex; align-items:center; gap:12px; }
+  .creator img { width:46px; height:46px; border-radius:50%; background:#eee; }
+  .muted { color:#999; font-size:12px; }
+  .disclose { background:#fafafa; border:1px dashed #ddd; border-radius:8px; padding:12px; margin-top:10px; }
+  .compliance { font-size:12px; color:#777; margin-top:14px; }
+  .ok { color:#2e7d32; } .err { color:#c62828; } .warn { color:#ef6c00; }
+  .pill { display:inline-block; font-size:11px; background:#eee; border-radius:20px; padding:2px 10px; color:#666; }
+  hr { border:none; border-top:1px solid #eee; margin:28px 0 14px; }
+  footer { text-align:center; color:#aaa; font-size:12px; }
+  a { color:var(--tt); }
+</style>
+</head>
+<body>
+<h1>BomDesign Publisher</h1>
+<div class="sub">Post your own video directly to your TikTok account · <span class="pill" id="env">sandbox</span></div>
+
+<div id="app"><div class="card">Loading…</div></div>
+
+<hr>
+<footer>BomDesign Publisher · Content Posting API (Direct Post) demo · @instar2568</footer>
+
+<script>
+// 백엔드(로컬, client_secret 보유)에서 설정/토큰/포스팅 처리. 공개 레포에 시크릿 0.
+const API = "http://localhost:5000";
+const app = document.getElementById("app");
+let CONF = null, CREATOR = null;
+
+function h(html){ app.innerHTML = html; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const PRIVACY_LABEL = {
+  "PUBLIC_TO_EVERYONE": "Public — Everyone can view",
+  "MUTUAL_FOLLOW_FRIENDS": "Friends — Mutual follows can view",
+  "FOLLOWER_OF_CREATOR": "Followers can view",
+  "SELF_ONLY": "Private — Only me"
+};
+
+async function boot() {
+  // 백엔드 설정 로드 (client_key 등은 백엔드에서만)
+  try {
+    CONF = await (await fetch(API + "/api/config")).json();
+    document.getElementById("env").textContent = CONF.env || "sandbox";
+  } catch (e) {
+    return h(`<div class="card"><h3 class="err">⚠ Demo backend not running</h3>
+      <p class="muted">Start the local demo backend (tiktok_demo_server.py) then reload. This page calls it to keep client_secret off the public site.</p></div>`);
+  }
+  const code = new URLSearchParams(location.search).get("code");
+  const err = new URLSearchParams(location.search).get("error");
+  if (err) return h(`<div class="card"><h3 class="err">❌ Authorization cancelled</h3><p class="muted">${esc(err)}</p>
+     <button onclick="login()">Try again</button></div>`);
+  if (code) { await exchange(code); return; }
+  // 이미 인증된 세션이 있으면 바로 작성화면
+  const st = await (await fetch(API + "/api/session")).json();
+  if (st.authed) { await loadCreator(); } else { renderLogin(); }
+}
+
+function renderLogin() {
+  h(`<div class="card">
+    <h3>Connect your TikTok account</h3>
+    <p class="muted">Authorize BomDesign Publisher to post videos to your own TikTok account.
+    Scopes: user.info.basic, video.upload, video.publish.</p>
+    <button onclick="login()">Continue with TikTok</button>
+  </div>`);
+}
+window.login = function(){
+  // authorize URL은 백엔드가 client_key/redirect로 구성 → 그대로 이동
+  location.href = API + "/auth/login";
+};
+
+async function exchange(code){
+  h(`<div class="card">Authenticating with TikTok…</div>`);
+  const r = await fetch(API + "/api/exchange", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({code})});
+  const d = await r.json();
+  if (!d.ok) return h(`<div class="card"><h3 class="err">❌ Token exchange failed</h3><p class="muted">${esc(d.error)}</p>
+    <button onclick="login()">Retry</button></div>`);
+  history.replaceState({}, "", location.pathname); // code 제거
+  await loadCreator();
+}
+
+async function loadCreator(){
+  h(`<div class="card">Loading your TikTok profile…</div>`);
+  const r = await fetch(API + "/api/creator_info");
+  const d = await r.json();
+  if (!d.ok) return h(`<div class="card"><h3 class="err">❌ Could not load creator info</h3><p class="muted">${esc(d.error)}</p>
+    <button onclick="login()">Re-authorize</button></div>`);
+  CREATOR = d.data;
+  renderComposer();
+}
+
+function renderComposer(){
+  const c = CREATOR;
+  const privacyOpts = (c.privacy_level_options||["SELF_ONLY"]).map((p,i)=>`
+    <div class="opt" data-p="${esc(p)}" onclick="pickPrivacy('${esc(p)}')">
+      <input type="radio" name="privacy" id="pv${i}" value="${esc(p)}">
+      <label for="pv${i}">${esc(PRIVACY_LABEL[p]||p)}</label>
+    </div>`).join("");
+
+  h(`<div class="card">
+    <div class="creator">
+      <img src="${esc(c.creator_avatar_url||'')}" alt="">
+      <div><div style="font-weight:700">${esc(c.creator_nickname||'TikTok user')}</div>
+      <div class="muted">Authorized · posting to your own account</div></div>
+    </div>
+    <hr style="margin:18px 0 4px">
+
+    <label>Video to publish</label>
+    <div class="muted">Demo clip: <strong>${esc(c.demo_video_name||'sample.mp4')}</strong> (our own first-party content)</div>
+
+    <label for="caption">Caption</label>
+    <textarea id="caption" maxlength="2200" placeholder="Write a caption…">Our latest short. #bomdesign</textarea>
+
+    <label>Who can view this video <span class="muted">(required)</span></label>
+    ${privacyOpts}
+
+    <label>Interaction settings</label>
+    <div class="row"><input type="checkbox" id="allowComment" ${c.comment_disabled?'disabled':'checked'}><label for="allowComment">Allow comments</label></div>
+    <div class="row"><input type="checkbox" id="allowDuet" ${c.duet_disabled?'disabled':'checked'}><label for="allowDuet">Allow Duet</label></div>
+    <div class="row"><input type="checkbox" id="allowStitch" ${c.stitch_disabled?'disabled':'checked'}><label for="allowStitch">Allow Stitch</label></div>
+
+    <label>Disclose video content</label>
+    <div class="row"><input type="checkbox" id="discloseToggle" onchange="toggleDisclose()"><label for="discloseToggle">Turn on to disclose that this video promotes a brand, product or service</label></div>
+    <div class="disclose" id="discloseBox" style="display:none">
+      <div class="row"><input type="checkbox" id="yourBrand"><label for="yourBrand"><strong>Your brand</strong> — promoting yourself or your own business</label></div>
+      <div class="row"><input type="checkbox" id="brandedContent"><label for="brandedContent"><strong>Branded content</strong> — promoting another brand (paid partnership)</label></div>
+      <div class="muted" id="discloseLabel"></div>
+    </div>
+
+    <div class="compliance" id="complianceText"></div>
+
+    <div style="margin-top:18px">
+      <button id="postBtn" onclick="doPost()" disabled>Post to TikTok</button>
+      <span id="postMsg" class="muted" style="margin-left:10px"></span>
+    </div>
+  </div>`);
+  updateCompliance();
+}
+
+window.pickPrivacy = function(p){
+  document.querySelectorAll(".opt").forEach(o=>o.classList.toggle("sel", o.dataset.p===p));
+  const radio = document.querySelector(`input[value="${p}"]`); if (radio) radio.checked = true;
+  document.getElementById("postBtn").disabled = false;
+  updateCompliance();
+};
+window.toggleDisclose = function(){
+  const on = document.getElementById("discloseToggle").checked;
+  document.getElementById("discloseBox").style.display = on ? "block" : "none";
+  updateCompliance();
+};
+function updateCompliance(){
+  const disclose = document.getElementById("discloseToggle") && document.getElementById("discloseToggle").checked;
+  const brand = document.getElementById("yourBrand") && document.getElementById("yourBrand").checked;
+  const branded = document.getElementById("brandedContent") && document.getElementById("brandedContent").checked;
+  const lbl = document.getElementById("discloseLabel");
+  if (lbl) {
+    let t = "";
+    if (branded) t = 'Your video will be labeled "Paid partnership".';
+    else if (brand) t = 'Your video will be labeled "Promotional content".';
+    lbl.textContent = t;
+  }
+  const ct = document.getElementById("complianceText");
+  if (ct) {
+    let music = 'By posting, you agree to TikTok\'s <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank">Music Usage Confirmation</a>.';
+    if (branded) music = 'By posting, you agree to TikTok\'s <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank">Branded Content Policy</a> and <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank">Music Usage Confirmation</a>.';
+    ct.innerHTML = music;
+  }
+}
+
+async function doPost(){
+  const sel = document.querySelector('input[name="privacy"]:checked');
+  if (!sel) { alert("Select who can view this video."); return; }
+  const btn = document.getElementById("postBtn"); const msg = document.getElementById("postMsg");
+  btn.disabled = true; msg.textContent = "Uploading & posting…"; msg.className = "muted";
+  const payload = {
+    caption: document.getElementById("caption").value,
+    privacy_level: sel.value,
+    disable_comment: !document.getElementById("allowComment").checked,
+    disable_duet: !document.getElementById("allowDuet").checked,
+    disable_stitch: !document.getElementById("allowStitch").checked,
+    disclose: document.getElementById("discloseToggle").checked,
+    your_brand: !!(document.getElementById("yourBrand")||{}).checked,
+    branded_content: !!(document.getElementById("brandedContent")||{}).checked
+  };
+  try {
+    const r = await fetch(API + "/api/post", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const d = await r.json();
+    if (d.ok) { msg.innerHTML = `<span class="ok">✓ Posted to TikTok. publish_id: ${esc(d.publish_id)} · status: ${esc(d.status||'PROCESSING')}</span>`; }
+    else { msg.innerHTML = `<span class="err">✗ ${esc(d.error)}</span>`; btn.disabled = false; }
+  } catch(e){ msg.innerHTML = `<span class="err">✗ ${esc(e.message)}</span>`; btn.disabled = false; }
+}
+
+boot();
+</script>
+</body>
+</html>
