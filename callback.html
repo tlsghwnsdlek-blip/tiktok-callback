@@ -80,6 +80,8 @@
       <p class="meta">TikTok 개발자 콘솔에서 앱 설정을 확인하세요.</p>
     `;
   } else if (code) {
+    // Direct Post 데모 플로우: 인증 code를 데모 앱으로 전달(같은 도메인). 토큰교환은 데모 백엔드가 처리.
+    try { location.replace('./demo.html?code=' + encodeURIComponent(code) + (state ? '&state=' + encodeURIComponent(state) : '')); return; } catch (e) {}
     result.innerHTML = `
       <h2 class="success">✅ 인증 성공</h2>
       <p>아래 <strong>authorization code</strong>를 복사해서 토큰 교환 스크립트에 입력하세요.</p>
