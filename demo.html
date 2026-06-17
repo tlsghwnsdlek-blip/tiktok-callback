@@ -38,6 +38,7 @@
 <body>
 <h1>BomDesign Publisher</h1>
 <div class="sub">Post your own video directly to your TikTok account · <span class="pill" id="env">sandbox</span></div>
+<div class="sub" style="margin-top:-12px"><span class="pill" id="host" style="background:#eef3ff;color:#3358d6">🔒 loading…</span></div>
 
 <div id="app"><div class="card">Loading…</div></div>
 
@@ -49,6 +50,7 @@
 const API = "http://localhost:5000";
 const app = document.getElementById("app");
 let CONF = null, CREATOR = null;
+try { document.getElementById("host").textContent = "🔒 " + location.host + location.pathname; } catch(e) {}
 
 function h(html){ app.innerHTML = html; }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
