@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BomDesign Publisher — Video Insights</title>
+<style>
+  :root { --tt:#ff0050; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    max-width: 760px; margin: 32px auto; padding: 24px; background:#fafafa; color:#1c1c1c; line-height:1.55; }
+  h1 { color: var(--tt); margin:0 0 4px; font-size: 22px; }
+  .sub { color:#888; font-size:13px; margin-bottom:20px; }
+  .card { background:#fff; padding:22px; border-radius:12px; box-shadow:0 2px 14px rgba(0,0,0,.07); margin:16px 0; }
+  button { background:var(--tt); color:#fff; border:none; padding:12px 22px; border-radius:8px; cursor:pointer; font-size:15px; font-weight:700; }
+  button:hover { background:#d6004a; }
+  .muted { color:#999; font-size:12px; }
+  .pill { display:inline-block; font-size:11px; background:#eee; border-radius:20px; padding:2px 10px; color:#666; }
+  .err { color:#c62828; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  th, td { padding:8px 6px; border-bottom:1px solid #eee; text-align:right; vertical-align:middle; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align:left; }
+  td img { width:40px; height:56px; object-fit:cover; border-radius:4px; background:#eee; }
+  .sum { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; }
+  .sum div { background:#fff0f4; border-radius:8px; padding:10px 14px; font-size:13px; }
+  .sum b { display:block; font-size:18px; color:var(--tt); }
+  hr { border:none; border-top:1px solid #eee; margin:28px 0 14px; }
+  footer { text-align:center; color:#aaa; font-size:12px; }
+</style>
+</head>
+<body>
+<h1>BomDesign Publisher — Video Insights</h1>
+<div class="sub">Performance of the videos on our own TikTok account · <span class="pill" id="env">sandbox</span></div>
+<div class="sub" style="margin-top:-12px"><span class="pill" id="host" style="background:#eef3ff;color:#3358d6">loading…</span></div>
+
+<div id="app"><div class="card">Loading…</div></div>
+
+<hr>
+<footer>BomDesign Publisher · Display API (video.list) · <a href="./privacy.html">Privacy</a> · <a href="./terms.html">Terms</a></footer>
+
+<script>
+// The local backend holds client_secret and the access token; this public page holds no secrets.
+const API = "http://localhost:5000";
+const app = document.getElementById("app");
+try { document.getElementById("host").textContent = "\u{1F512} " + location.host + location.pathname; } catch(e) {}
+function h(html){ app.innerHTML = html; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function n(x){ return (x==null||x==="") ? "–" : Number(x).toLocaleString("en-US"); }
+
+async function boot(){
+  try {
+    const c = await (await fetch(API + "/api/config")).json();
+    document.getElementById("env").textContent = c.env || "sandbox";
+  } catch(e) {
+    return h('<div class="card"><h3 class="err">Backend not running</h3><p class="muted">Start the local backend, then reload.</p></div>');
+  }
+  const q = new URLSearchParams(location.search);
+  if (q.get("error")) return h('<div class="card"><h3 class="err">Authorization cancelled</h3><p class="muted">' + esc(q.get("error")) + '</p><button onclick="login()">Try again</button></div>');
+  if (q.get("code")) {
+    h('<div class="card">Authenticating with TikTok…</div>');
+    const d = await (await fetch(API + "/api/exchange", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({code: q.get("code"), state: q.get("state")})})).json();
+    history.replaceState({}, "", location.pathname);
+    if (!d.ok) return h('<div class="card"><h3 class="err">Token exchange failed</h3><p class="muted">' + esc(d.error) + '</p><button onclick="login()">Retry</button></div>');
+    return loadVideos();
+  }
+  const st = await (await fetch(API + "/api/session")).json();
+  if (st.authed && (st.scope || "").indexOf("video.list") >= 0) return loadVideos();
+  h('<div class="card"><h3>Connect your TikTok account</h3>' +
+    '<p class="muted">Sign in with the TikTok account you own to see how each of your videos is performing. ' +
+    'This page asks for <b>user.info.basic</b> (your name and avatar) and <b>video.list</b> (your public videos and their view, like, comment and share counts). ' +
+    'Nothing is posted and no data from other users is read.</p>' +
+    '<button onclick="login()">Continue with TikTok</button></div>');
+}
+window.login = function(){ location.href = API + "/auth/login?flow=stats"; };
+
+async function loadVideos(){
+  h('<div class="card">Loading your videos…</div>');
+  const d = await (await fetch(API + "/api/videos")).json();
+  if (!d.ok) return h('<div class="card"><h3 class="err">Could not load videos</h3><p class="muted">' + esc(d.error) + '</p><button onclick="login()">Re-authorize</button></div>');
+  const v = d.videos || [];
+  const tot = k => v.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+  const rows = v.map(x => '<tr>' +
+    '<td>' + (x.cover_image_url ? '<img src="' + esc(x.cover_image_url) + '" alt="">' : '') + '</td>' +
+    '<td>' + esc((x.title || x.video_description || "(no caption)").slice(0, 48)) +
+      '<div class="muted">' + (x.create_time ? new Date(x.create_time * 1000).toISOString().slice(0, 10) : '') + '</div></td>' +
+    '<td>' + n(x.view_count) + '</td><td>' + n(x.like_count) + '</td><td>' + n(x.comment_count) + '</td><td>' + n(x.share_count) + '</td></tr>').join("");
+  const u = d.user || {};
+  h('<div class="card">' +
+    '<div style="display:flex;align-items:center;gap:12px">' +
+      (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" style="width:46px;height:46px;border-radius:50%">' : '') +
+      '<div><div style="font-weight:700">' + esc(u.display_name || "Your account") + '</div>' +
+      '<div class="muted">Showing your ' + v.length + ' most recent public videos · read with video.list</div></div></div>' +
+    '<div class="sum"><div><b>' + n(tot("view_count")) + '</b>views</div><div><b>' + n(tot("like_count")) + '</b>likes</div>' +
+      '<div><b>' + n(tot("comment_count")) + '</b>comments</div><div><b>' + n(tot("share_count")) + '</b>shares</div></div>' +
+    '<table><tr><th></th><th>Video</th><th>Views</th><th>Likes</th><th>Comments</th><th>Shares</th></tr>' +
+      (rows || '<tr><td colspan="6" class="muted">No public videos found.</td></tr>') + '</table>' +
+    '<div style="margin-top:16px"><button onclick="loadVideos()">Refresh</button></div></div>');
+}
+boot();
+</script>
+</body>
+</html>
